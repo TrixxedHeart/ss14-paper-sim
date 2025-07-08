@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SS14 Paper Editor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&family=Noto+Sans:ital,wght@1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --paper-width: 510px;
+      --paper-height: 610px;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Noto Sans', Arial, sans-serif;
+      background: #202030;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 24px;
+    }
+
+    header {
+      font-size: 1.4em;
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #f8f6ef;
+    }
+
+    .editor-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+      justify-content: center;
+      width: 100%;
+      max-width: 1200px;
+    }
+
+    .editor-column {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-width: 300px;
+      max-width: 540px;
+    }
+
+    label {
+      font-weight: bold;
+      font-size: 1em;
+      margin-bottom: 6px;
+      color: #5bf0ff;
+    }
+
+    textarea {
+      width: 100%;
+      height: 610px;
+      resize: none;
+      padding: 16px;
+      background: #1a1a28;
+      color: #f8f6ef;
+      font-family: monospace;
+      font-size: 14px;
+      border: 2px solid #444;
+      border-radius: 8px;
+      outline: none;
+      box-sizing: border-box;
+    }
+
+#preview {
+  width: var(--paper-width);
+  min-height: var(--paper-height);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 0;
+  background: none;
+  border: none;
+  overflow: visible;
+}
+	
+.paper-visual {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  background-color: #eaecde;
+  border: 3px solid #333;
+  border-radius: 10px;
+  padding: 12px 16px;
+  box-sizing: border-box;
+  width: var(--paper-width);
+  height: var(--paper-height);
+  font-family: 'Noto Sans', Arial, sans-serif;
+}
+
+
+.paper-lines {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 8px 12px;
+  box-sizing: border-box;
+  font-size: 15px;
+  color: #222;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.paper-lines::-webkit-scrollbar {
+  width: 6px;
+}
+.paper-lines::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+
+
+.blank-indicator {
+  color: #666;
+  font-style: italic;
+  text-align: center;
+  padding: 24px 0;
+}
+
+/* these arent used but exist */
+.paper-stamps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+  justify-content: center;
+}
+
+.stamp {
+	display:none;
+  background: #444;
+  color: white;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: bold;
+  border-radius: 4px;
+  border: 1px solid #222;
+}
+
+
+    .ss14-head1 { font-weight: bold; font-size: 1.52em; line-height: 1.1em; }
+    .ss14-head2 { font-weight: bold; font-size: 1.19em; line-height: 1.14em; }
+    .ss14-head3 { font-weight: bold; font-size: 1.07em; line-height: 1.11em; }
+    .ss14-bold { font-weight: bold; }
+    .ss14-italic { font-style: italic; }
+    .ss14-bullet { font-weight: bold; display: block; margin-left: 1.2em; }
+    .ss14-color {}
+    .ss14-size1 { font-size: 0.96em; }
+    .ss14-size2 { font-size: 1.12em; }
+    .ss14-size3 { font-size: 1.28em; }
+    .ss14-link, .ss14-signature { color: #1b67a5; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <header>SS14 Paper Simulator</header>
+  <sub>not guaranteed to be accurate :3</sub>
+  <div class="editor-container">
+    <div class="editor-column">
+      <label for="source">Editor:</label>
+      <textarea id="source" spellcheck="false"></textarea>
+    </div>
+    <div class="editor-column">
+      <label for="preview">Preview:</label>
+      <div id="preview"></div>
+    </div>
+  </div>
+
+
+  <script>
+  // none of this is commented and is probably shitcode all the way through, if you plan to fuck around with this i am not responmsible for your medical expenses >:/
+    function sanitizeAndParseTags(input) {
+      const tagRender = {
+        bold:       c => `<span class="ss14-bold">${c}</span>`,
+        italic:     c => `<span class="ss14-italic">${c}</span>`,
+        bullet:     c => `<span class="ss14-bullet">&#8226; ${c}</span>`,
+        color:      (c, v) => `<span class="ss14-color" style="color:${v};">${c}</span>`,
+        head:       (c, v) => `<span class="ss14-head${v || 1}">${c}</span>`,
+        size:       (c, v) => `<span class="ss14-size${v}">${c}</span>`,
+        link:       c => `<span class="ss14-link">${c}</span>`,
+        signature:  c => `<span class="ss14-signature">${c}</span>`
+      };
+
+      function escapeHTML(str) {
+        return str.replace(/[&<>"']/g, c => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;'
+        }[c]));
+      }
+
+      function parse(str) {
+        const tagStack = [];
+        let output = '';
+        let i = 0;
+
+        while (i < str.length) {
+          const open = str.indexOf('[', i);
+          if (open === -1) {
+            output += escapeHTML(str.slice(i));
+            break;
+          }
+          output += escapeHTML(str.slice(i, open));
+          const close = str.indexOf(']', open);
+          if (close === -1) {
+            output += escapeHTML(str.slice(open));
+            break;
+          }
+
+		const raw = str.slice(open + 1, close);
+
+		// god i hate everything
+		if (!/^\/?[a-z]+/i.test(raw)) {
+		  output += escapeHTML(str.slice(open, close + 1));
+		  i = close + 1;
+		  continue;
+		}
+
+		const isClosing = raw.startsWith('/');
+		const [tag, val] = raw.replace(/^\//, '').split('=');
+		const tagName = tag.trim().toLowerCase();
+		const tagVal = val?.trim();
+
+          if (isClosing) {
+            let popped = null;
+            while (tagStack.length > 0) {
+              const last = tagStack.pop();
+              if (last.name === tagName) {
+                output += last.end;
+                popped = last;
+                break;
+              } else {
+                output += last.end;
+              }
+            }
+            if (!popped) {
+              output += escapeHTML(str.slice(open, close + 1));
+            }
+          } else {
+            let htmlOpen = '', htmlClose = '';
+            if (tagRender[tagName]) {
+              htmlOpen = tagRender[tagName]('', tagVal).replace('></span>', '>');
+              htmlClose = '</span>';
+            }
+            output += htmlOpen;
+            tagStack.push({ name: tagName, end: htmlClose });
+          }
+
+          i = close + 1;
+        }
+
+        // close it if the bitch left it open!
+        while (tagStack.length > 0) {
+          output += tagStack.pop().end;
+        }
+
+        return output;
+      }
+
+      return parse(input);
+    }
+
+    const source = document.getElementById("source");
+    const preview = document.getElementById("preview");
+
+function updatePreview() {
+  const content = sanitizeAndParseTags(source.value.trim());
+
+preview.innerHTML = `
+  <div class="paper-visual">
+    <div class="paper-lines">${content || '<div class="blank-indicator">(This page is blank.)</div>'}</div>
+    <div class="paper-stamps">
+      <div class="stamp">Captain</div>
+      <div class="stamp">NT</div>
+    </div>
+  </div>
+`;
+}
+
+
+    source.addEventListener("input", updatePreview);
+
+    source.value = `[color=#fc9d03]█▄ █[color=#ffb833]▀█▀[/color]⠀[head=2]Cargo Department[/head]
+█ ▀█[color=#ffb833]   █ ⠀⠀[/color][head=3]Acquisition Request Receipt[/head]
+[/color]‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+[color=#fc9d03][italic]"You’ll get your order when the gods of logistics deem you worthy."[/italic][/color]
+This does [italic]not[/italic] guarantee effort, speed, or enthusiasm.
+
+Requesting Party: 
+Department:
+Order Requested: 
+
+Request Status:  
+[ ] Queued
+[ ] Actually Being Processed
+[ ] “Misplaced” (Check back never)
+[ ] We are taping this to our board to laugh at
+
+Estimated Delivery Time:  
+[ ] Next 5 minutes or so (no gurantees)
+[ ] Sometime this shift
+[ ] We are experiencing delays out of our control, pray.
+
+Handled By: your mom`;
+    updatePreview();
+  </script>
+</body>
+</html>
