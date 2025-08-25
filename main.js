@@ -118,15 +118,15 @@ Department:
 Order Requested: 
 
 Request Status:  
-[ ] Queued
-[ ] Actually Being Processed
-[ ] “Misplaced” (Check back never)
-[ ] We are taping this to our board to laugh at
+\\\[ ] Queued
+\\\[ ] Actually Being Processed
+\\\[ ] “Misplaced” (Check back never)
+\\\[ ] We are taping this to our board to laugh at
 
 Estimated Delivery Time:  
-[ ] Next 5 minutes or so (no gurantees)
-[ ] Sometime this shift
-[ ] We are experiencing delays out of our control, pray.
+\\\[ ] Next 5 minutes or so (no guarantees)
+\\\[ ] Sometime this shift
+\\\[ ] We are experiencing delays out of our control, pray.
 
 Handled By: your mom`;
 updatePreview();
